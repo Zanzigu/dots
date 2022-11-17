@@ -40,6 +40,7 @@ endif
 map <F5> :w <CR> :!gcc % -o %<.exe && %<.exe <CR>
 
 call plug#begin()
+Plug 'ellisonleao/gruvbox.nvim'
 Plug 'ThePrimeagen/vim-be-good'
 Plug 'ellisonleao/gruvbox.nvim'
 Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}
