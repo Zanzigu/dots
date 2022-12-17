@@ -1,3 +1,16 @@
+call plug#begin()
+Plug 'ellisonleao/gruvbox.nvim'
+Plug 'ThePrimeagen/vim-be-good'
+Plug 'ellisonleao/gruvbox.nvim'
+Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}
+Plug 'sangdol/mintabline.vim'
+call plug#end()
+
+set background=dark
+colorscheme gruvbox
+
+lua require 'nvim-treesitter.install'.compilers = { "gcc" }
+
 set nowrap
 set hidden
 set nobackup
@@ -38,15 +51,3 @@ if has('mouse')
 endif
 
 map <F5> :w <CR> :!gcc % -o %<.exe && %<.exe <CR>
-
-call plug#begin()
-Plug 'ellisonleao/gruvbox.nvim'
-Plug 'ThePrimeagen/vim-be-good'
-Plug 'ellisonleao/gruvbox.nvim'
-Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}
-call plug#end()
-
-set background=dark
-colorscheme gruvbox
-
-lua require 'nvim-treesitter.install'.compilers = { "gcc" }
