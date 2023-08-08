@@ -41,7 +41,7 @@
             "colorScheme": "Gruvbox Dark",
             "font": 
             {
-                "face": "CaskaydiaCove NF Mono",
+                "face": "Cascadia Code",
                 "size": 12,
                 "weight": "normal"
             },
@@ -68,18 +68,6 @@
                 "hidden": false,
                 "name": "Azure Cloud Shell",
                 "source": "Windows.Terminal.Azure"
-            },
-            {
-                "guid": "{51855cb2-8cce-5362-8f54-464b92b32386}",
-                "hidden": false,
-                "name": "Ubuntu",
-                "source": "CanonicalGroupLimited.Ubuntu_79rhkp1fndgsc"
-            },
-            {
-                "guid": "{2c4de342-38b7-51cf-b940-2309a097f518}",
-                "hidden": true,
-                "name": "Ubuntu",
-                "source": "Windows.Terminal.Wsl"
             }
         ]
     },
