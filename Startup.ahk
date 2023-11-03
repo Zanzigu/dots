@@ -1,6 +1,10 @@
 #Requires AutoHotkey v2.0-beta
 #SingleInstance force
 
+; Temp
+; ~p::Send "{F3 down}{p down}{F3 up}{p up}"
+; 
+
 SetNumLockState(false)
 
 ; Icona di windows blu

@@ -5,16 +5,6 @@ I_Icon := "./lpad.ico"
 If FileExist(I_Icon)
 	TraySetIcon(I_Icon)
 
-; Launchpad S's key numbers:      |
-;   0   1   2   3   4   5   6   7    8
-;  16  17  18  19  20  21  22  23   24
-;  32  33  34  35  36  37  38  39   40
-;  48  49  50  51  52  53  54  55   56
-;  64  65  66  67  68  69  70  71   72
-;  80  81  82  83  84  85  86  87   88
-;  96  97  98  99 100 101 102 103  104
-; 112 113 114 115 116 117 118 119  120
-
 global midi := AHKMidi()
 midi.midiEventPassThrough := false
 midi.midiLabelCallbacks := false
@@ -22,34 +12,47 @@ midi.specificProcessCallback := false
 midi.settingFilePath := A_ScriptDir . "\setting.ini"
 
 Class colors {
-    static green := 124
-    static lowGreen := 125
-    static yellow := 62
-    static amber := 63
-    static orange := 47
-    static dimOrange := 26
-    static dimmerOrange := 25
-    static red := 15
-    static dimRed := 9
-    static lowRed := 27
-    static off := 12
+    static green := 0x3c
+    static lowGreen := 0x2c
+    static dimGreen := 0x1c
+    static greenish := 0x3d
+
+    static yellow := 0x3e
+    static lowYellow := 0x2d
+
+    static amber := 0x3f
+    static lowAmber := 0x2e
+    static dimAmber := 0x1d
+
+    static orange := 0x2f
+    static lowOrange := 0x1e
+
+    static reddish := 0x1f
+    static red := 0x0f
+    static lowRed := 0x0e
+    static dimRed := 0x0d
+
+    static off := 0x0c
+    static sysColor := colors.lowYellow
+    static muted := colors.lowRed
+    static notMuted := colors.lowGreen
 }
 
-global volumeSteps := [2, 4, 20, 30, 50, 80, 100]
+global volumeSteps := [1, 2, 30, 40, 50, 80, 100]
 global apps := [
     {
         exe: "chrome.exe",
-        color: colors.amber,
+        color: colors.lowAmber,
         vol: 0
     },
     {
-        exe: "discord.exe",
-        color: colors.yellow,
+        exe: "Discord.exe",
+        color: colors.lowYellow,
         vol: 0
     },
     {
-        exe: "spotify.exe",
-        color: colors.lowGreen,
+        exe: "Spotify.exe",
+        color: colors.dimGreen,
         vol: 0
     }
 ]
@@ -57,8 +60,8 @@ global apps := [
 global micDevice := "Microphone (Trust GXT 232 Microphone)" 
 
 ; DISCORD:
-micOn := False
-audioOn := False
+micOn := true
+audioOn := true
 
 ; right shift + F1 to reload
 >+F1:: {
@@ -94,11 +97,7 @@ Class baseDelegate {
         global micOn, audioOn
 
         ; media play/pause
-        midi.MidiOut "N1", 1, 72, colors.orange
-        ; media next
-        midi.MidiOut "CC", 1, 107, colors.amber
-        ; media prev
-        midi.MidiOut "CC", 1, 106, colors.amber
+        midi.MidiOut "N1", 1, 120, colors.orange
 
         ; discord
         this.updateDiscordLed()
@@ -138,49 +137,38 @@ Class baseDelegate {
         global micOn, audioOn
         ; mic
         if micOn
-            midi.MidiOut "N1", 1, 120, colors.amber
-        else
-            midi.MidiOut "N1", 1, 120, colors.red
-        ; audio
-        if audioOn
-            midi.MidiOut "N1", 1, 104, colors.orange
+            midi.MidiOut "N1", 1, 104, colors.amber
         else
             midi.MidiOut "N1", 1, 104, colors.red
+        ; audio
+        if audioOn
+            midi.MidiOut "N1", 1, 88, colors.amber
+        else
+            midi.MidiOut "N1", 1, 88, colors.red
     }
     ; discord mute mic
-    MidiNoteOn120(event) {
+    MidiNoteOn104(event) {
         this.toggleDiscordMic()
     }
     ; discord mute audio
-    MidiNoteOn104(event) {
+    MidiNoteOn88(event) {
         this.toggleDiscordAudio()
     }
     ; reset discord status
-    MidiNoteOn88(event) {
+    MidiNoteOn72(event) {
         global micOn, audioOn
-        midi.MidiOut "N1", 1, 88, colors.red
+        midi.MidiOut "N1", 1, 72, colors.red
         micOn := true
         audioOn := true
         this.updateDiscordLed()
     }
-    MidiNoteOff88(event) {
-        midi.MidiOut "N0", 1, 88, colors.off
+    MidiNoteOff72(event) {
+        midi.MidiOut "N0", 1, 72, colors.off
     }
-
 
     ; media play/pause
-    MidiNoteOn72(event) {
+    MidiNoteOn120(event) {
         Send "{Media_Play_Pause}"
-    }
-    ; media next
-    MidiControlChange107(event) {
-        if event.Value == 127
-            Send "{Media_Next}"
-    }
-    ; media prev
-    MidiControlChange106(event) {
-        if event.Value == 127
-            Send "{Media_Prev}"
     }
 
     ; micfophone
@@ -203,75 +191,24 @@ Class baseDelegate {
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-Class defaultDelegate extends baseDelegate
-{
+Class defaultDelegate extends baseDelegate {
     __New() {
         allOff()
         this.setupBase()
-
-        ; default mode -> User 1
-        midi.MidiOut "CC", 1, 109, colors.yellow
-
-        ; 1st row for volume
-        vol := SoundGetVolume()
-        loop 7 {
-            if vol >= volumeSteps[A_Index]
-                midi.MidiOut "N1", 1, A_Index, colors.yellow
-        }
-        midi.MidiOut "N1", 1, 0, colors.green
-    }
-
-    ; set mixer mode
-    MidiControlChange111(event) {
-        if event.Value == 127
-            midi.delegate := mixerDelegate()
-    }
-
-    ; volume management
-    MidiNoteOn(event) {
-        ; 1st row
-        if event.noteNumber == 0 {
-            if SoundGetMute() {
-                SoundSetMute 0
-                midi.MidiOut "N1", 1, 0, colors.green
-            }
-            else {
-                SoundSetMute 1
-                midi.MidiOut "N1", 1, 0, colors.red
-            }
-        }
-        else if event.noteNumber <= 7 {
-            SoundSetVolume volumeSteps[event.noteNumber]
-            loop 7 {
-                if A_Index > event.noteNumber {
-                    midi.MidiOut "N0", 1, A_Index, colors.off
-                }
-                else {
-                    midi.MidiOut "N1", 1, A_Index, colors.yellow
-                }
-            }
-        }
-
-        ; as if this func wasn't executed:
-        event.eventHandled := false
-    }
-}
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Mixer
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-Class mixerDelegate extends baseDelegate {
-    __New() {
-        allOff()
-        this.setupBase()
-
-        ; default mode -> User 1
-        midi.MidiOut "CC", 1, 111, colors.yellow
 
         this.volumeLights()
+
+        ; media prev, next
+        midi.MidiOut "N1", 1, 119, colors.amber
+        midi.MidiOut "N1", 1, 118, colors.amber
+    }
+
+    ; media prev, media next
+    MidiNoteOn119(event) {
+        Send "{Media_Prev}"
+    }
+    MidiNoteOn118(event) {
+        Send "{Media_Next}"
     }
 
     volumeLights() {
@@ -280,26 +217,26 @@ Class mixerDelegate extends baseDelegate {
         i := 0
         loop 7 {
             if vol >= volumeSteps[A_Index]
-                midi.MidiOut "N1", 1, 96-i, colors.yellow
+                midi.MidiOut "N1", 1, 96-i, colors.sysColor
             i += 16
         }
         if vol == 0
-            midi.MidiOut "N1", 1, 112, colors.red
+            midi.MidiOut "N1", 1, 112, colors.muted
         else
-            midi.MidiOut "N1", 1, 112, colors.green
+            midi.MidiOut "N1", 1, 112, colors.notMuted
 
         ; other columns
         for app in apps {
-            vol := RunWait('volume.ahk get ' app.exe)
+            vol := RunWait('pythonw volume.py get ' app.exe)
             app.vol := vol
             if not vol < 0 {
                 if vol == 0 {
                     ; muted
-                    midi.MidiOut "N1", 1, 112+A_Index, colors.red
+                    midi.MidiOut "N1", 1, 112+A_Index, colors.muted
                 }
                 else {
                     col := A_Index
-                    midi.MidiOut "N1", 1, 112+col, colors.green
+                    midi.MidiOut "N1", 1, 112+col, colors.notMuted
                     ; color
                     loop 7 {
                         if vol >= volumeSteps[A_Index]
@@ -308,12 +245,6 @@ Class mixerDelegate extends baseDelegate {
                 }
             }
         }
-    }
-
-    ; set default mode
-    MidiControlChange109(event) {
-        if event.Value == 127
-            midi.delegate := defaultDelegate()
     }
 
     ; volume management
@@ -334,11 +265,11 @@ Class mixerDelegate extends baseDelegate {
                 ; manage mute/unmute
                 if SoundGetMute() {
                     SoundSetMute 0
-                    midi.MidiOut "N1", 1, 112, colors.green
+                    midi.MidiOut "N1", 1, 112, colors.notMuted
                 }
                 else {
                     SoundSetMute 1
-                    midi.MidiOut "N1", 1, 112, colors.red
+                    midi.MidiOut "N1", 1, 112, colors.muted
                 }
             }
             else {
@@ -346,29 +277,29 @@ Class mixerDelegate extends baseDelegate {
                 SoundSetVolume volumeSteps[button]
                 loop 7 {
                     if A_Index > button
-                        midi.MidiOut "N0", 1, A_Index, colors.off
+                        midi.MidiOut "N0", 1, (16*(7-A_Index))+col, colors.off
                     else
-                        midi.MidiOut "N1", 1, A_Index, colors.yellow
+                        midi.MidiOut "N1", 1, (16*(7-A_Index))+col, colors.sysColor
                 }
             }
         }
         else {
             ; per app volume
             if button == 0 {
-                vol := RunWait('volume.ahk get ' apps[col].exe)
+                vol := RunWait('pythonw volume.py get ' apps[col].exe)
                 ; manage mute/unmute
                 if vol == 0 {
-                    vol := RunWait("volume.ahk set " apps[col].exe " " apps[col].vol)
-                    midi.MidiOut "N1", 1, (112+col), colors.green
+                    vol := RunWait("pythonw volume.py set " apps[col].exe " " apps[col].vol)
+                    midi.MidiOut "N1", 1, (112+col), colors.notMuted
                 }
                 else {
-                    vol := RunWait("volume.ahk set " apps[col].exe " 0")
-                    midi.MidiOut "N1", 1, (112+col), colors.red
+                    vol := RunWait("pythonw volume.py set " apps[col].exe " 0")
+                    midi.MidiOut "N1", 1, (112+col), colors.muted
                 }
             }
             else {
                 ; manage level
-                vol := RunWait("volume.ahk set " apps[col].exe " " volumeSteps[button])
+                vol := RunWait("pythonw volume.py set " apps[col].exe " " volumeSteps[button])
                 apps[col].vol := vol
                 i := 0
                 loop 7 {
@@ -378,7 +309,7 @@ Class mixerDelegate extends baseDelegate {
                         midi.MidiOut "N0", 1, (96+col)-i, colors.off
                         i += 16
                 }
-                midi.MidiOut "N1", 1, (112+col), colors.green
+                midi.MidiOut "N1", 1, (112+col), colors.notMuted
             }
         }
     }
